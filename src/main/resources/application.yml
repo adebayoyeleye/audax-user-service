@@ -1,7 +1,11 @@
 spring:
   data:
     mongodb:
-      uri: mongodb://localhost:27017/estate_hub_testdb
+      uri: mongodb://localhost:27017/estate_hub
       
 jwt:
   secret: "ca288b9d9b63ad6a7f895c6ebe1f3820cf8dc5c88ea1b64740ab2661a43241cf"
+
+logging:
+  level:
+    org.springframework.security: DEBUG

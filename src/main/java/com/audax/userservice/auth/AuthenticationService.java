@@ -18,11 +18,14 @@ import com.audax.userservice.user.Role;
 import com.audax.userservice.user.User;
 import com.audax.userservice.user.UserRepository;
 
+import javax.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -37,7 +40,15 @@ public class AuthenticationService {
         private final AuthenticationManager authenticationManager;
         private final MailService mailService; // Assuming you have a service to handle sending emails
 
-        public AuthenticationResponse register(UserDetailsRequest request) {
+        public Cookie generateJwtCookie(String jwtToken) {
+                Cookie jwtCookie = new Cookie("JWT-TOKEN", jwtToken);
+                jwtCookie.setHttpOnly(true);
+                jwtCookie.setMaxAge(jwtToken == null ? 0 : (7 * 24 * 60 * 60)); // setting the cookie for 7 days
+                jwtCookie.setPath("/"); // making it accessible for the entire application
+                return jwtCookie;
+        }
+
+        public Map<String, Object> register(UserDetailsRequest request) {
                 if (userRepository.existsByEmail(request.getEmail())) {
                         throw new DuplicateEmailException("Email already in use: " + request.getEmail());
                 }
@@ -62,11 +73,27 @@ public class AuthenticationService {
                 LOGGER.info("New user registered: {}", user.getEmail());
 
                 String jwtToken = jwtService.generateToken(user);
+                Cookie jwtCookie = generateJwtCookie(jwtToken);
 
-                return AuthenticationResponse.builder()
-                                .token(jwtToken)
+                AuthenticationResponse authResponse = AuthenticationResponse.builder()
                                 .message("Check your email for validation link!")
                                 .build();
+
+                Map<String, Object> responseMap = new HashMap<>();
+                responseMap.put("authResponse", authResponse);
+                responseMap.put("jwtCookie", jwtCookie);
+
+                return responseMap;
+
+                // return AuthenticationResponse.builder()
+                // .cookie(jwtCookie)
+                // .message("Check your email for validation link!")
+                // .build();
+
+                // return AuthenticationResponse.builder()
+                // .token(jwtToken)
+                // .message("Check your email for validation link!")
+                // .build();
         }
 
         public AuthenticationResponse verifyEmail(AuthenticationRequest request) {
@@ -106,9 +133,22 @@ public class AuthenticationService {
                                                 request.getPassword()));
 
                 String jwtToken = jwtService.generateToken(user);
+                Cookie jwtCookie = generateJwtCookie(jwtToken);
 
                 return AuthenticationResponse.builder()
-                                .token(jwtToken)
+                                .cookie(jwtCookie)
+                                .build();
+
+                // return AuthenticationResponse.builder()
+                // .token(jwtToken)
+                // .build();
+        }
+
+        public AuthenticationResponse logout() { //Does this really clear the jwt? I mean can someone else not still send the jwt?
+                Cookie jwtCookie = generateJwtCookie(null);
+                return AuthenticationResponse.builder()
+                                .cookie(jwtCookie)
+                                .message("Logged out successfully!")
                                 .build();
         }
 
@@ -133,7 +173,8 @@ public class AuthenticationService {
 
         public AuthenticationResponse resetPassword(AuthenticationRequest request) {
                 User user = userRepository.findByPasswordResetToken(request.getToken())
-                                .orElseThrow(() -> new InvalidTokenException("Invalid password reset token: " + request.getToken()));
+                                .orElseThrow(() -> new InvalidTokenException(
+                                                "Invalid password reset token: " + request.getToken()));
 
                 if (user.getPasswordResetExpiresAt().isBefore(LocalDateTime.now())) {
                         throw new InvalidTokenException("The password reset token has expired: " + user.getEmail());
@@ -162,16 +203,18 @@ public class AuthenticationService {
                 user.setEmail(request.getUserDetailsRequest().getEmail());
                 user.setUpdatedAt(LocalDateTime.now());
 
-                if (request.getUserDetailsRequest().getPassword() != null && !request.getUserDetailsRequest().getPassword().isEmpty()) {
+                if (request.getUserDetailsRequest().getPassword() != null
+                                && !request.getUserDetailsRequest().getPassword().isEmpty()) {
                         user.setPassword(passwordEncoder.encode(request.getUserDetailsRequest().getPassword()));
                 }
 
                 userRepository.save(user);
 
                 LOGGER.info("User updated: {}", user.getEmail());
-return AuthenticationResponse.builder()
+                return AuthenticationResponse.builder()
                                 .message("User updated: " + user.getEmail())
-                                .build();        }
+                                .build();
+        }
 
         public AuthenticationResponse updateUserRole(AuthenticationRequest request) {
                 User adminUser = userRepository.findByEmail(request.getAdminEmail())
@@ -180,7 +223,8 @@ return AuthenticationResponse.builder()
 
                 if (!adminUser.getRoles().contains(Role.ADMIN)) {
                         throw new UnauthorizedException(
-                                        "Insufficient permissions to update user role: " + request.getAdminEmail() + " - "
+                                        "Insufficient permissions to update user role: " + request.getAdminEmail()
+                                                        + " - "
                                                         + adminUser.getRoles());
                 }
 
@@ -193,7 +237,8 @@ return AuthenticationResponse.builder()
                 userRepository.save(user);
 
                 LOGGER.info("Role updated for user: {}", user.getEmail());
-return AuthenticationResponse.builder()
+                return AuthenticationResponse.builder()
                                 .message("Role updated for user: " + user.getEmail())
-                                .build();        }
+                                .build();
+        }
 }

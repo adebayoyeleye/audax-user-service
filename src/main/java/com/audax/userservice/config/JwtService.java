@@ -47,6 +47,8 @@ public class JwtService {
         return generateToken(new HashMap<>(), userDetails);
     }
 
+    //TODO: Problem is thatexpired JWT will throw errors and not provide room for correction
+    // The JWT should be cleared from the cookie once theres a problem 
     private Claims extractAllClaims(String token){
         return Jwts
         .parserBuilder()

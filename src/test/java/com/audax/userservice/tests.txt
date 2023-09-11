@@ -1,3 +1,5 @@
+JWT-TOKEN=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzQGdtYWlsLmNvbSIsImlhdCI6MTY5NDI5NDAwMiwiZXhwIjoxNjk0Mjk1NDQyfQ.hK_HTrGp6whMdFQqaU6TVDJ5thdz0g9SKcXZviMdPAw; XSRF-TOKEN=4644f652-682e-48c7-a10d-b990b31d64ed
+
 Sure, based on the final versions of each file for the `userservice` microservice, here are the potential tests you can write:
 
 ## Unit Tests:
