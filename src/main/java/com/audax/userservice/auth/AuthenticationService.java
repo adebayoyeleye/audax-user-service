@@ -18,7 +18,7 @@ import com.audax.userservice.user.Role;
 import com.audax.userservice.user.User;
 import com.audax.userservice.user.UserRepository;
 
-import javax.servlet.http.Cookie;
+import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;

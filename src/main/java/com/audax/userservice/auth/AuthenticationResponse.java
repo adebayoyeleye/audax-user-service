@@ -1,6 +1,6 @@
 package com.audax.userservice.auth;
 
-import javax.servlet.http.Cookie;
+import jakarta.servlet.http.Cookie;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
