@@ -22,6 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,18 +40,24 @@ public class SecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/v1/auth/register", "/api/v1/auth/authenticate")
+                        // .ignoringRequestMatchers("/api/v1/auth/register",
+                        // "/api/v1/auth/authenticate")
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
                 .authorizeHttpRequests(authorize -> authorize
-                        // .dispatcherTypeMatchers(ERROR).permitAll()
+                        // .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll() // Do I really need
+                        // this?
                         .requestMatchers("/api/v1/auth/register",
                                 "/api/v1/auth/authenticate",
+                                // "/api/v1/auth/getcurrentuser",
                                 "/api/v1/auth/verify-email",
                                 "/api/v1/auth/init-password-reset",
                                 "/api/v1/auth/reset-password")
                         .permitAll()
-                        .requestMatchers("/api/v1/auth/update-user",
+                        .requestMatchers("/api/v1/auth/update-role").hasRole("ADMIN") // TODO: Test controller/service
+                                                                                      // for this & remove manual checks
+                        .requestMatchers("/api/v1/auth/getcurrentuser",
+                                "/api/v1/auth/update-user",
                                 "/api/v1/auth/update-role",
                                 "/api/v1/auth/logout")
                         .authenticated()
@@ -88,8 +95,7 @@ final class SpaCsrfTokenRequestHandler extends CsrfTokenRequestAttributeHandler 
     public void handle(HttpServletRequest request, HttpServletResponse response, Supplier<CsrfToken> csrfToken) {
         /*
          * Always use XorCsrfTokenRequestAttributeHandler to provide BREACH protection
-         * of
-         * the CsrfToken when it is rendered in the response body.
+         * of the CsrfToken when it is rendered in the response body.
          */
         this.delegate.handle(request, response, csrfToken);
     }
@@ -102,8 +108,7 @@ final class SpaCsrfTokenRequestHandler extends CsrfTokenRequestAttributeHandler 
          * to resolve the CsrfToken. This applies when a single-page application
          * includes
          * the header value automatically, which was obtained via a cookie containing
-         * the
-         * raw CsrfToken.
+         * the raw CsrfToken.
          */
         if (StringUtils.hasText(request.getHeader(csrfToken.getHeaderName()))) {
             return super.resolveCsrfTokenValue(request, csrfToken);

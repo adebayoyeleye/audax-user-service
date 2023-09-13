@@ -42,13 +42,13 @@ public class User implements UserDetails {
     @NotBlank
     @Size(max = 120)
     private String password;
-    private Set<Role> roles; // Changed to Set of Roles
+    private Set<Role> roles;
     private boolean isAccountNonExpired;
     private boolean isAccountNonLocked;
     private boolean isCredentialsNonExpired;
     private boolean isEnabled;
     private String emailVerificationToken;
-    private String passwordResetToken; // Added for password reset functionality
+    private String passwordResetToken;
     private LocalDateTime passwordResetExpiresAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

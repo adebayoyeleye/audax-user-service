@@ -4,14 +4,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Service;
 
 import com.audax.userservice.auth.exceptions.AccountNotEnabled;
 import com.audax.userservice.auth.exceptions.DuplicateEmailException;
 import com.audax.userservice.auth.exceptions.InvalidTokenException;
 import com.audax.userservice.auth.exceptions.UnauthorizedException;
+import com.audax.userservice.config.JwtAuthenticationFilter;
 import com.audax.userservice.config.JwtService;
 import com.audax.userservice.mail.MailService;
 import com.audax.userservice.user.Role;
@@ -19,6 +23,7 @@ import com.audax.userservice.user.User;
 import com.audax.userservice.user.UserRepository;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -26,6 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -37,6 +43,7 @@ public class AuthenticationService {
         private final UserRepository userRepository;
         private final PasswordEncoder passwordEncoder;
         private final JwtService jwtService;
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
         private final AuthenticationManager authenticationManager;
         private final MailService mailService; // Assuming you have a service to handle sending emails
 
@@ -46,6 +53,14 @@ public class AuthenticationService {
                 jwtCookie.setMaxAge(jwtToken == null ? 0 : (7 * 24 * 60 * 60)); // setting the cookie for 7 days
                 jwtCookie.setPath("/"); // making it accessible for the entire application
                 return jwtCookie;
+        }
+
+        public record UserRecord(String email, Set<Role> roles, String firstName) {
+        }
+
+        private UserRecord getUserRecord(User user) {
+                return new UserRecord(user.getEmail(), user.getRoles(), user.getFirstname());
+
         }
 
         public Map<String, Object> register(UserDetailsRequest request) {
@@ -76,6 +91,7 @@ public class AuthenticationService {
                 Cookie jwtCookie = generateJwtCookie(jwtToken);
 
                 AuthenticationResponse authResponse = AuthenticationResponse.builder()
+                                .user(getUserRecord(user))
                                 .message("Check your email for validation link!")
                                 .build();
 
@@ -84,16 +100,6 @@ public class AuthenticationService {
                 responseMap.put("jwtCookie", jwtCookie);
 
                 return responseMap;
-
-                // return AuthenticationResponse.builder()
-                // .cookie(jwtCookie)
-                // .message("Check your email for validation link!")
-                // .build();
-
-                // return AuthenticationResponse.builder()
-                // .token(jwtToken)
-                // .message("Check your email for validation link!")
-                // .build();
         }
 
         public AuthenticationResponse verifyEmail(AuthenticationRequest request) {
@@ -110,7 +116,7 @@ public class AuthenticationService {
                                 .build();
         }
 
-        public AuthenticationResponse authenticate(AuthenticationRequest request) {
+        public Map<String, Object> authenticate(AuthenticationRequest request) {
                 User user = userRepository.findByEmail(request.getEmail())
                                 .orElseThrow(() -> new UsernameNotFoundException(
                                                 "User not found with email: " + request.getEmail()));
@@ -131,26 +137,52 @@ public class AuthenticationService {
                                 new UsernamePasswordAuthenticationToken(
                                                 request.getEmail(),
                                                 request.getPassword()));
+                LOGGER.info("Authentication successful: {}", user.getEmail());
 
                 String jwtToken = jwtService.generateToken(user);
                 Cookie jwtCookie = generateJwtCookie(jwtToken);
 
-                return AuthenticationResponse.builder()
-                                .cookie(jwtCookie)
+                AuthenticationResponse authResponse = AuthenticationResponse.builder()
+                                .user(getUserRecord(user))
+                                .message("Authentication successful: " + user.getEmail())
                                 .build();
 
-                // return AuthenticationResponse.builder()
-                // .token(jwtToken)
-                // .build();
+                Map<String, Object> responseMap = new HashMap<>();
+                responseMap.put("authResponse", authResponse);
+                responseMap.put("jwtCookie", jwtCookie);
+
+                return responseMap;
         }
 
-        public AuthenticationResponse logout() { //Does this really clear the jwt? I mean can someone else not still send the jwt?
-                Cookie jwtCookie = generateJwtCookie(null);
-                return AuthenticationResponse.builder()
-                                .cookie(jwtCookie)
-                                .message("Logged out successfully!")
-                                .build();
+        public AuthenticationResponse getCurrentUser(HttpServletRequest request) {
+                String jwt = jwtAuthenticationFilter.getJwtFromCookie(request);
+                String userEmail;
+
+                userEmail = jwtService.extractUsername(jwt);
+                if (userEmail != null) {
+                        User user = userRepository.findByEmail(userEmail)
+                                        .orElseThrow(() -> new UsernameNotFoundException(
+                                                        "User not found with email: " + userEmail));
+                        user.setPassword(null);
+                        user.setEmailVerificationToken(null);
+                        user.setPasswordResetToken(null);
+
+                        return AuthenticationResponse.builder()
+                                        .user(getUserRecord(user))
+                                        .build();
+                }
+                return null;
         }
+
+        // public AuthenticationResponse logout() { // Does this really clear the jwt? I
+        // mean can someone else not still
+        // // send the jwt?
+        // Cookie jwtCookie = generateJwtCookie(null);
+        // return AuthenticationResponse.builder()
+        // .cookie(jwtCookie)
+        // .message("Logged out successfully!")
+        // .build();
+        // }
 
         public AuthenticationResponse initiatePasswordReset(AuthenticationRequest request) {
                 User user = userRepository.findByEmail(request.getEmail())

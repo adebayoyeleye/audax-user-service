@@ -1,6 +1,7 @@
 package com.audax.userservice.auth;
 
-import jakarta.servlet.http.Cookie;
+import com.audax.userservice.auth.AuthenticationService.UserRecord;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,5 +14,5 @@ import lombok.NoArgsConstructor;
 public class AuthenticationResponse {
     private String token;
     private String message;
-    private Cookie cookie;
+    private UserRecord user;
 }
