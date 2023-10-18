@@ -158,6 +158,9 @@ public class AuthenticationService {
                 String jwt = jwtAuthenticationFilter.getJwtFromCookie(request);
                 String userEmail;
 
+                if (jwt == null) {
+                        throw new InvalidTokenException("JWT is null. Authentication required.");
+                }
                 userEmail = jwtService.extractUsername(jwt);
                 if (userEmail != null) {
                         User user = userRepository.findByEmail(userEmail)
