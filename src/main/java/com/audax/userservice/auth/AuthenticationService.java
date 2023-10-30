@@ -52,6 +52,7 @@ public class AuthenticationService {
                 jwtCookie.setHttpOnly(true);
                 jwtCookie.setMaxAge(jwtToken == null ? 0 : (7 * 24 * 60 * 60)); // setting the cookie for 7 days
                 jwtCookie.setPath("/"); // making it accessible for the entire application
+                jwtCookie.setSecure(true); // making it accessible via HTTPS
                 return jwtCookie;
         }
 
@@ -177,15 +178,21 @@ public class AuthenticationService {
                 return null;
         }
 
-        // public AuthenticationResponse logout() { // Does this really clear the jwt? I
-        // mean can someone else not still
-        // // send the jwt?
-        // Cookie jwtCookie = generateJwtCookie(null);
-        // return AuthenticationResponse.builder()
-        // .cookie(jwtCookie)
-        // .message("Logged out successfully!")
-        // .build();
-        // }
+        public Map<String, Object> logout() { // Does this really clear the jwt? I
+                // mean can someone else not still
+                // send the jwt?
+                Cookie jwtCookie = generateJwtCookie(null);
+
+                AuthenticationResponse authResponse = AuthenticationResponse.builder()
+                                .message("Logged out successfully!")
+                                .build();
+
+                Map<String, Object> responseMap = new HashMap<>();
+                responseMap.put("authResponse", authResponse);
+                responseMap.put("jwtCookie", jwtCookie);
+
+                return responseMap;
+        }
 
         public AuthenticationResponse initiatePasswordReset(AuthenticationRequest request) {
                 User user = userRepository.findByEmail(request.getEmail())

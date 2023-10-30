@@ -25,7 +25,7 @@ public class AuthenticationController {
 
     // @GetMapping("/csrf")
     // public CsrfToken csrf(CsrfToken csrfToken) {
-    //     return csrfToken;
+    // return csrfToken;
     // }
 
     @GetMapping("/getcurrentuser")
@@ -52,7 +52,7 @@ public class AuthenticationController {
     public ResponseEntity<AuthenticationResponse> authenticate(
             @RequestBody AuthenticationRequest request, HttpServletResponse response) {
 
-         Map<String, Object> result = service.authenticate(request);
+        Map<String, Object> result = service.authenticate(request);
 
         // Get the authentication response and cookie from the map
         AuthenticationResponse authResponse = (AuthenticationResponse) result.get("authResponse");
@@ -62,12 +62,18 @@ public class AuthenticationController {
         return ResponseEntity.ok(authResponse);
     }
 
-    // @GetMapping("/logout")
-    // public ResponseEntity<AuthenticationResponse> logout(HttpServletResponse response) {
-    //     AuthenticationResponse authResponse = service.logout();
-    //     response.addCookie(authResponse.getCookie());
-    //     return ResponseEntity.ok(authResponse);
-    // }
+    @PostMapping("/logout")
+    public ResponseEntity<AuthenticationResponse> logout(HttpServletResponse response) {
+
+        Map<String, Object> result = service.logout();
+
+        // Get the authentication response and cookie from the map
+        AuthenticationResponse authResponse = (AuthenticationResponse) result.get("authResponse");
+        Cookie jwtCookie = (Cookie) result.get("jwtCookie");
+
+        response.addCookie(jwtCookie);
+        return ResponseEntity.ok(authResponse);
+    }
 
     @PostMapping("/verify-email")
     public ResponseEntity<AuthenticationResponse> verifyEmail(

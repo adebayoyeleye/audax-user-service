@@ -1,6 +1,7 @@
 package com.audax.userservice.config;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 import org.springframework.context.annotation.Bean;
@@ -18,9 +19,11 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 import org.springframework.util.StringUtils;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import static org.springframework.security.config.Customizer.withDefaults;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -38,6 +41,7 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
@@ -52,7 +56,7 @@ public class SecurityConfiguration {
                                 "/api/v1/auth/reset-password")
                         .permitAll()
                         .requestMatchers("/api/v1/auth/update-role").hasRole("ADMIN") // TODO: Test controller/service
-                                                                                      // for this & remove manual checks
+                        // for this & remove manual checks
                         .requestMatchers("/api/v1/auth/update-user",
                                 "/api/v1/auth/update-role",
                                 "/api/v1/auth/logout")
@@ -67,20 +71,18 @@ public class SecurityConfiguration {
         return http.build();
     }
 
-    // remove later
+    // update or remove later
     @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**") // Adjust the mapping pattern to match your API endpoints
-                        .allowedOrigins("http://localhost:3000") // Adjust the allowed origin(s) as needed
-                        .allowedMethods("GET", "POST", "PUT", "DELETE") // Adjust the allowed HTTP methods as needed
-                        .allowCredentials(true) // <-- Important, allow credentials
-                        .allowedHeaders("*"); // Adjust the allowed headers as needed
-            }
-        };
-    }
+	CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(Arrays.asList("https://localhost:3000"));
+		configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
+        configuration.setAllowCredentials(true);
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/api/**", configuration);
+		return source;
+	}
 }
 
 final class SpaCsrfTokenRequestHandler extends CsrfTokenRequestAttributeHandler {
