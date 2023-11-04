@@ -4,11 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Service;
 
 import com.audax.userservice.auth.exceptions.AccountNotEnabled;
@@ -60,6 +57,18 @@ public class AuthenticationService {
         }
 
         private UserRecord getUserRecord(User user) {
+                if (!user.isAccountNonLocked()) {
+                        throw new UnauthorizedException("The account is locked: " + user.getEmail());
+                }
+
+                if (!user.isAccountNonExpired() || !user.isCredentialsNonExpired()) {
+                        throw new UnauthorizedException("The account or credentials have expired: " + user.getEmail());
+                }
+
+                if (!user.isEnabled()) {
+                        throw new AccountNotEnabled("Account not enabled: " + user.getEmail());
+                }
+
                 return new UserRecord(user.getEmail(), user.getRoles(), user.getFirstname());
 
         }
@@ -92,7 +101,7 @@ public class AuthenticationService {
                 Cookie jwtCookie = generateJwtCookie(jwtToken);
 
                 AuthenticationResponse authResponse = AuthenticationResponse.builder()
-                                .user(getUserRecord(user))
+                                // .user(getUserRecord(user)) // Will break...should not be needed at this time?
                                 .message("Check your email for validation link!")
                                 .build();
 
@@ -122,17 +131,7 @@ public class AuthenticationService {
                                 .orElseThrow(() -> new UsernameNotFoundException(
                                                 "User not found with email: " + request.getEmail()));
 
-                if (!user.isAccountNonLocked()) {
-                        throw new UnauthorizedException("The account is locked: " + user.getEmail());
-                }
-
-                if (!user.isAccountNonExpired() || !user.isCredentialsNonExpired()) {
-                        throw new UnauthorizedException("The account or credentials have expired: " + user.getEmail());
-                }
-
-                if (!user.isEnabled()) {
-                        throw new AccountNotEnabled("Account not enabled: " + user.getEmail());
-                }
+                UserRecord userRecord = getUserRecord(user);
 
                 authenticationManager.authenticate(
                                 new UsernamePasswordAuthenticationToken(
@@ -144,7 +143,7 @@ public class AuthenticationService {
                 Cookie jwtCookie = generateJwtCookie(jwtToken);
 
                 AuthenticationResponse authResponse = AuthenticationResponse.builder()
-                                .user(getUserRecord(user))
+                                .user(userRecord)
                                 .message("Authentication successful: " + user.getEmail())
                                 .build();
 
@@ -167,9 +166,10 @@ public class AuthenticationService {
                         User user = userRepository.findByEmail(userEmail)
                                         .orElseThrow(() -> new UsernameNotFoundException(
                                                         "User not found with email: " + userEmail));
-                        user.setPassword(null);
-                        user.setEmailVerificationToken(null);
-                        user.setPasswordResetToken(null);
+                        // Not Needed!!!
+                        // user.setPassword(null);
+                        // user.setEmailVerificationToken(null);
+                        // user.setPasswordResetToken(null);
 
                         return AuthenticationResponse.builder()
                                         .user(getUserRecord(user))
